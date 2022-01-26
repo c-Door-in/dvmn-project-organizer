@@ -36,3 +36,27 @@ class Team(models.Model):
             self.call_time,
             self.project_manager,
         )
+
+
+class Student(models.Model):
+    tg_id = models.ForeignKey(
+        Tg_user,
+        on_delete=models.CASCADE,
+        related_name='students',
+        verbose_name='telegram id',
+    )
+    name = models.CharField(max_length=25, blank=True)
+    level = models.CharField(max_length=15)
+    desired_time = models.TimeField(
+        'Desired call start time',
+        blank=True,
+        null=True
+    )
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.SET_NULL,
+        related_name='students',
+        blank=True,
+        null=True,
+    )
+    
