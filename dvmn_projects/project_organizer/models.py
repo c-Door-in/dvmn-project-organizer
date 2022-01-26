@@ -47,8 +47,13 @@ class Student(models.Model):
     )
     name = models.CharField(max_length=25, blank=True)
     level = models.CharField(max_length=15)
-    desired_time = models.TimeField(
-        'Desired call start time',
+    from_time = models.TimeField(
+        'Available from a time',
+        blank=True,
+        null=True
+    )
+    until_time = models.TimeField(
+        'Available until a time',
         blank=True,
         null=True
     )
