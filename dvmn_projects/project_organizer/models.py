@@ -22,7 +22,7 @@ class Project_manager(models.Model):
 
 
 class Team(models.Model):
-    team_id = models.IntegerFiels()
+    team_id = models.IntegerField()
     project_manager = models.ForeignKey(
         Project_manager,
         on_delete=models.SET_NULL,
