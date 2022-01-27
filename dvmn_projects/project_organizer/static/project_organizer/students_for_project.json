@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Семен",
+    "level": "novice+",
+    "tg_username": "@LuSP7",
+    "discord_username": "example2#4321",
+    "is_far_east": "False"
+  },
+  {
+    "name": "Алексей",
+    "level": "novice",
+    "tg_username": "@LexaShvetsoff",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  }
+]
