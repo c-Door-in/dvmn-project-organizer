@@ -7,7 +7,7 @@ class Tg_user(models.Model):
     is_creator = models.BooleanField(default=False)
 
     def __str__(self):
-        return '{} - {}'.format(self.tg_id, self.tg_name)
+        return self.tg_name
 
 
 class Project_manager(models.Model):
@@ -17,9 +17,19 @@ class Project_manager(models.Model):
         related_name='project_managers',
     )
     name = models.CharField(max_length=25)
+    from_time = models.TimeField(
+        'Available from a time',
+        blank=True,
+        null=True
+    )
+    until_time = models.TimeField(
+        'Available until a time',
+        blank=True,
+        null=True
+    )
 
     def __str__(self):
-        return name
+        return self.name
 
 
 class Team(models.Model):
@@ -65,4 +75,7 @@ class Student(models.Model):
         blank=True,
         null=True,
     )
+
+    def __str__(self):
+        return self.name
     

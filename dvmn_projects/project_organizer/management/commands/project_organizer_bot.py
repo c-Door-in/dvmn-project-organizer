@@ -17,35 +17,27 @@ from telegram.ext import (CallbackContext, CallbackQueryHandler, CommandHandler,
 
 
 (
-    MAIN_MENU,
+    NO_DB,
     CREATOR,
-    MY_GAMES,
+    PM_DIALOG,
     CREATED_GAMES,
-    JOINED_GAMES,
+    STUDENT_DIALOG,
 ) = range(5)
 
 
-def start(update: Update, context: CallbackContext) -> int:
-    """Start the conversation and ask user for input."""
+def start(update, context):
     user_data = context.user_data
 
     username = update.message.from_user.name
     user_id = update.message.from_user.id
 
     if not Tg_user.objects.filter(is_creator=True):
-        file_path = os.path.join(
-            settings.BASE_DIR,
-            r'project_organizer\static\project_organizer\creator.json'
+        Tg_user.objects.create(
+            tg_id=user_id,
+            tg_name=username,
+            is_creator=True
         )
-        with open(file_path, 'r') as file:
-            creator = json.load(file)
-        if creator[0]['tg_username'] == username:
-            Tg_user.objects.create(
-                tg_id=user_id,
-                tg_name=username,
-                is_creator=True
-            )
-        return foo(update, context)
+        return no_db(update, context)
     creator = Tg_user.objects.get(is_creator=True)
     if creator.tg_name == username:
         return creator_dialog(update, context)
@@ -68,74 +60,100 @@ def start(update: Update, context: CallbackContext) -> int:
     return MAIN_MENU
 
 
-def foo(update: Update, context: CallbackContext) -> int:
-    """Dumb foo func."""
-    # TODO: временная заглушка
+def no_db(update, context):
     chat_id = update.effective_chat.id
     username = update.message.from_user.name
     update.message.reply_text(
-        f'Now creator is {username}',
+        f'В качестве создателя установлен {username}\n'
+        'Загрузите базу данных?',
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                ['Создать игру', 'Вступить в игру', 'Мои игры'],
-                ['Выход']
-            ],
+            keyboard=[['Загрузить базу данных']],
             one_time_keyboard=True,
             resize_keyboard=True,
         ),
     )
+    return NO_DB
 
-    return MAIN_MENU
 
-
-def creator_dialog(update: Update, context: CallbackContext) -> int:
-    if not Project_manager.objects.all():
-        file_path = os.path.join(
+def create_new_db(update, context):
+    file_path = os.path.join(
             settings.BASE_DIR,
-            r'project_organizer\static\project_organizer\pm_for_project.json'
+            r'project_db.json'
         )
-        with open(file_path, 'r') as file:
-            pm_for_project = json.load(file)
-        for pm in pm_for_project:
-            Tg_user.objects.create(
-                tg_name=pm['tg_username'],
-            )
+    with open(file_path, 'r') as file:
+        project_db = json.load(file)
+    for user in project_db:
+        Tg_user.objects.create(tg_name=user['tg_username'])
+        if user['level'] == 'pm':
             Project_manager.objects.create(
-                tg_user=Tg_user.objects.get(tg_name=pm['tg_username']),
-                name=pm['name'],
+                tg_user=Tg_user.objects.get(tg_name=user['tg_username']),
+                name=user['name'],
             )
-        update.message.reply_text('Pm was added')
-    if not Student.objects.all():
-        file_path = os.path.join(
-            settings.BASE_DIR,
-            r'project_organizer\static\project_organizer\students_for_project.json'
-        )
-        with open(file_path, 'r') as file:
-            students_for_project = json.load(file)
-        for student in students_for_project:
-            Tg_user.objects.create(tg_name=student['tg_username'])
+        else:
             Student.objects.create(
-                tg_user=Tg_user.objects.get(tg_name=student['tg_username']),
-                name=student['name'],
-                level=student['level'],
+                tg_user=Tg_user.objects.get(tg_name=user['tg_username']),
+                name=user['name'],
+                level=user['level'],
             )
-        update.message.reply_text('Students was added')
+    update.message.reply_text('База данных загружена')
+    return creator_dialog(update, context)
+
+    return CREATOR
+
+
+def creator_dialog(update, context):
+    if Project_manager.objects.filter(from_time=None):
+        text = (
+            '\n'.join(pm.tg_user.tg_name for pm in Project_manager.objects.filter(from_time=None))
+        )
+        update.message.reply_text(
+            'Отошлите ссылку на бота этим ПМ: \n' + text
+        )
+        update.message.reply_text(
+            'Как только они отметят свое время, '
+            'вы получите уведомление'
+        )
+        return done(update, context)
     update.message.reply_text(
-        'Hello, creator!',
+        'Нажмите Сформировать, чтобы посмотреть команды на текущий момент',
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                ['Создать игру', 'Вступить в игру', 'Мои игры'],
-                ['Выход']
-            ],
+            keyboard=[['Сформировать']],
             one_time_keyboard=True,
             resize_keyboard=True,
         ),
     )
+    return CREATOR
 
-    return MAIN_MENU
+
+def create_teams(update, context):
+    chat_id = update.effective_chat.id
+    username = update.message.from_user.name
+    update.message.reply_text(
+        'Нажмите Сформировать, чтобы посмотреть команды на текущий момент',
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[['Сформировать']],
+            one_time_keyboard=True,
+            resize_keyboard=True,
+        ),
+    )
+    return CREATOR
 
 
-def done(update: Update, context: CallbackContext) -> int:
+def comfirm(update, context):
+    chat_id = update.effective_chat.id
+    username = update.message.from_user.name
+    update.message.reply_text(
+        'Нажмите Сформировать, чтобы посмотреть команды на текущий момент',
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[['Сформировать']],
+            one_time_keyboard=True,
+            resize_keyboard=True,
+        ),
+    )
+    return CREATOR
+
+
+def done(update, context):
     """End conversation."""
 
     user_data = context.user_data
@@ -158,29 +176,47 @@ def main() -> None:
     dispatcher = updater.dispatcher
     # Add conversation handler with the states
     conv_handler = ConversationHandler(
-        entry_points=[
-              CommandHandler('start', foo, Filters.regex('join-game-[a-zA-Z0-9_.-]*'), pass_args=True),
-              CommandHandler('start', start, ~Filters.regex('join-game-[a-zA-Z0-9_.-]*')),
-              CommandHandler('game', foo),
-            ],
+        entry_points=[CommandHandler('start', start)],
         states={
-            MAIN_MENU: [
+            CREATOR: [
                 MessageHandler(
-                    Filters.regex('^Меню$'), start
+                    Filters.regex('^Сформировать$'),
+                    create_teams,
                 ),
                 MessageHandler(
-                    Filters.regex('^Создать игру$'), foo
+                    Filters.regex('^Утвердить$'),
+                    comfirm,
+                ),
+            ],
+            NO_DB: [
+                MessageHandler(
+                    Filters.document.file_extension('json'),
+                    create_new_db,
                 ),
                 MessageHandler(
-                    Filters.regex('^Вступить в игру$'), foo, # !
+                    Filters.regex('^Загрузить базу данных$'),
+                    create_new_db,
+                ),
+            ],
+            PM_DIALOG: [
+                MessageHandler(
+                    Filters.regex('^Сформировать$'),
+                    create_teams,
                 ),
                 MessageHandler(
-                    Filters.regex('^Мои игры$'), foo
+                    Filters.regex('^Утвердить$'),
+                    comfirm,
+                ),
+            ],
+            STUDENT_DIALOG: [
+                MessageHandler(
+                    Filters.regex('^Сформировать$'),
+                    create_teams,
                 ),
                 MessageHandler(
-                    Filters.text & ~(Filters.regex('^Выход$') | Filters.command),
-                    foo
-                )
+                    Filters.regex('^Утвердить$'),
+                    comfirm,
+                ),
             ],
         },
         fallbacks=[MessageHandler(Filters.regex('^Выход$'), done)],
