@@ -1,4 +1,4 @@
-[
+﻿[
   {
     "name": "Тим",
     "level": "pm",
@@ -11,13 +11,6 @@
     "level": "pm",
     "tg_username": "@Eka_Kve",
     "discord_username": "example2#4323",
-    "is_far_east": "False"
-  },
-  {
-    "name": "Семен",
-    "level": "novice+",
-    "tg_username": "@LuSP7",
-    "discord_username": "example2#4321",
     "is_far_east": "False"
   },
   {
