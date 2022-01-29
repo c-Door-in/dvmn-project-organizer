@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
+import os
 import sys
 from django.core.management.utils import get_random_secret_key
 from pathlib import Path
@@ -138,7 +139,7 @@ STATIC_ROOT = ''
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = (
-    BASE_DIR / 'staticfiles'
+    os.path.join(BASE_DIR, 'static'),
 )
 
 # Default primary key field type
