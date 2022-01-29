@@ -20,7 +20,7 @@ from telegram.ext import (CallbackContext, CallbackQueryHandler, CommandHandler,
     NO_DB,
     CREATOR,
     PM_DIALOG,
-    CREATED_GAMES,
+    MAIN_MENU,
     STUDENT_DIALOG,
 ) = range(5)
 
@@ -80,7 +80,7 @@ def create_new_db(update, context):
             settings.BASE_DIR,
             r'project_db.json'
         )
-    with open(file_path, 'r', encoding='utf-8') as file:
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
         project_db = json.load(file)
     for user in project_db:
         Tg_user.objects.create(tg_name=user['tg_username'])
