@@ -44,8 +44,8 @@ class Team(models.Model):
 
     def __str__(self):
         return 'Team leading by {} starts calling at {}'.format(
-            self.call_time,
             self.project_manager,
+            self.call_time,
         )
 
 
