@@ -31,9 +31,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = env.str('SECRET_KEY', get_random_secret_key())
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG', False)
+DEBUG = env.bool('DEBUG', False)
 
-DEVELOPMENT_MODE = env("DEVELOPMENT_MODE", "False")
+DEVELOPMENT_MODE = env.bool("DEVELOPMENT_MODE", "False")
 
 ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 
@@ -92,10 +92,10 @@ if DEVELOPMENT_MODE is True:
         }
     }
 elif len(sys.argv) > 0 and sys.argv[1] != 'collectstatic':
-    if env('DATABASE_URL', None) is None:
+    if env.str('DATABASE_URL', None) is None:
         raise Exception('DATABASE_URL environment variable not defined')
     DATABASES = {
-        'default': dj_database_url.parse(env('DATABASE_URL')),
+        'default': dj_database_url.parse(env.str('DATABASE_URL')),
     }
 
 
