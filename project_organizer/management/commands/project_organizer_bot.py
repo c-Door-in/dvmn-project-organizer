@@ -22,7 +22,8 @@ from telegram.ext import (CallbackContext, CallbackQueryHandler, CommandHandler,
     PM_DIALOG,
     MAIN_MENU,
     STUDENT_DIALOG,
-) = range(5)
+    DELETE,
+) = range(6)
 
 
 def start(update, context):
@@ -38,26 +39,24 @@ def start(update, context):
             is_creator=True
         )
         return no_db(update, context)
+    
     creator = Tg_user.objects.get(is_creator=True)
-    if creator.tg_name == username:
+    if username == creator.tg_name:
         return creator_dialog(update, context)
-        
+
+    if Project_manager.objects.filter(tg_user__tg_name=username):
+        return pm_dialog(update, context)
+
+    if Student.objects.filter(tg_user__tg_name=username):
+        return student_dialog(update, context)
 
     update.message.reply_text(
-        'Проверка связи',
-        reply_markup=ReplyKeyboardMarkup(
-            keyboard=[
-                ['Создать игру', 'Вступить в игру', 'Мои игры'],
-            ],
-            one_time_keyboard=True,
-            resize_keyboard=True,
-        ),
+        'Вас нет в списке. Как вы сюда попали?'
     )
     # на случай ошибок ввода
     context.user_data['error_message'] = 'Я вас не понимаю, выберите один из вариантов.'
-    context.user_data['next_state'] = MAIN_MENU
 
-    return MAIN_MENU
+    return done(update, context)
 
 
 def no_db(update, context):
@@ -107,17 +106,42 @@ def creator_dialog(update, context):
             '\n'.join(pm.tg_user.tg_name for pm in Project_manager.objects.filter(from_time=None))
         )
         update.message.reply_text(
-            'Отошлите ссылку на бота этим ПМ: \n' + text
+            'Отошлите ссылку на бота этим ПМ:\n' + text
         )
-        update.message.reply_text(
+        final_text = (
             'Как только они отметят свое время, '
             'вы получите уведомление'
         )
-        return done(update, context)
+        keyboard=[['Сжечь все']]
+    elif not Student.objects.filter(tg_user__tg_id__isnull=False):
+        text = (
+            '\n'.join(student.tg_user.tg_name
+                      for student in Student.objects.filter(from_time=None))
+        )
+        update.message.reply_text(
+            'Отошлите ссылку на бота этим студентам:\n' + text
+        )
+        final_text = (
+            'Как только кто-то отметит время, вы получите уведомление'
+        )
+        keyboard=[['Сжечь все']]
+    else:
+        text = (
+            '\n'.join(student.tg_user.tg_name
+                      for student in Student.objects.filter(from_time=None))
+        )
+        update.message.reply_text(
+            'Эти студенты еще не указали свое время:\n' + text
+        )
+        final_text = (
+            'Нажмите Сформировать, чтобы посмотреть '
+            'команды на текущий момент'
+        )
+        keyboard=[['Сформировать'], ['Сжечь все']]
     update.message.reply_text(
-        'Нажмите Сформировать, чтобы посмотреть команды на текущий момент',
+        final_text,
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[['Сформировать']],
+            keyboard=keyboard,
             one_time_keyboard=True,
             resize_keyboard=True,
         ),
@@ -126,12 +150,32 @@ def creator_dialog(update, context):
 
 
 def create_teams(update, context):
-    chat_id = update.effective_chat.id
-    username = update.message.from_user.name
     update.message.reply_text(
-        'Нажмите Сформировать, чтобы посмотреть команды на текущий момент',
+        'Идет формирование команд...',
+    )
+    return teams_comfirm(update, context)
+
+
+def teams_comfirm(update, context):
+    for pm in Project_manager.objects.all():
+        update.message.reply_text(f'PM - {pm}')
+        pm_teams = Team.objects.filter(project_manager=pm)
+        if not pm_teams:
+            text = f'{pm} пока без команд'
+        else:
+            for team in pm_teams:
+                text = (
+                    'Команда №{team.team_id}\n'
+                    'Участники:\n'
+                    '\n'.join(team.students.all())
+                )
+        update.message.reply_text(text)
+    if not Team.objects.all():
+        return creator_dialog(update, context)
+    update.message.reply_text(
+        'Подтвердите составы команд',
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[['Сформировать']],
+            keyboard=[['Утвердить']],
             one_time_keyboard=True,
             resize_keyboard=True,
         ),
@@ -139,18 +183,79 @@ def create_teams(update, context):
     return CREATOR
 
 
-def comfirm(update, context):
-    chat_id = update.effective_chat.id
+def pm_dialog(update, context):
     username = update.message.from_user.name
+    user_id = update.message.from_user.id
+    pm = Project_manager.objects.get(tg_user__tg_name=username)
+    if not pm.tg_user.tg_id:
+        pm.update(tg_user__tg_id=user_id)
+    if not pm.from_time:
+        update.message.reply_text(
+            'Укажите временной промежуток для созвонов с командами '
+            '(в формате 17:30-21:00)',
+            reply_markup=ReplyKeyboardRemove(),
+        )
+    else:
+        update.message.reply_text(
+            'Вы указали время с {} до {}'.format(pm.from_time, pm.until_time),
+            reply_markup = ReplyKeyboardMarkup(
+                keyboard=[['Изменить']],
+                one_time_keyboard=True,
+                resize_keyboard=True,
+            ),
+        )
+    
+    return PM_DIALOG
+
+
+def pm_time_confirm(update, context):
+    time_interval = update.message.text.split('-')
+    username = update.message.from_user.name
+    pm = Project_manager.objects.get(tg_user__tg_name=username)
+    pm.from_time = time_interval[0]
+    pm.until_time = time_interval[1]
+    pm.save()
+    if Project_manager.objects.filter(from_time__isnull=False):
+        creator=Tg_user.objects.get(is_creator=True)
+        context.bot.send_message(creator.tg_id, 
+                                 text="Все ПМы указали свое время")
+    return pm_dialog(update, context)
+    
+
+def pm_time_change(update, context):
+    username = update.message.from_user.name
+    pm = Project_manager.objects.get(tg_user__tg_name=username)
+    pm.from_time = None
+    pm.until_time = None
+    pm.save()
+    return pm_dialog(update, context)
+
+
+def student_dialog(update, context):
+    username = update.message.from_user.name
+    user_id = update.message.from_user.id
+
+
+def delete_confirm(update, context):
     update.message.reply_text(
-        'Нажмите Сформировать, чтобы посмотреть команды на текущий момент',
+        'Вы точно уверены, что хотите все сжечь? Вся база будет стерта!',
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[['Сформировать']],
+            keyboard=[['БЕЗУСЛОВНО!!!'], ['Отмена! Отмена!']],
             one_time_keyboard=True,
             resize_keyboard=True,
         ),
     )
-    return CREATOR
+    return DELETE
+
+
+def delete_db(update, context):
+    Tg_user.objects.all().delete()
+    update.message.reply_text(
+        'Все данные удалены.',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return done(update, context)
+    
 
 
 def done(update, context):
@@ -185,7 +290,11 @@ def main() -> None:
                 ),
                 MessageHandler(
                     Filters.regex('^Утвердить$'),
-                    comfirm,
+                    teams_comfirm,
+                ),
+                MessageHandler(
+                    Filters.regex('^Сжечь все$'),
+                    delete_confirm,
                 ),
             ],
             NO_DB: [
@@ -200,12 +309,12 @@ def main() -> None:
             ],
             PM_DIALOG: [
                 MessageHandler(
-                    Filters.regex('^Сформировать$'),
-                    create_teams,
+                    Filters.regex('^(((|1)[0-9])|(2[0-4]))\:((00)|(30))\-(((|1)([0-9]))|(2[0-4]))\:((00)|(30))$'),
+                    pm_time_confirm,
                 ),
                 MessageHandler(
-                    Filters.regex('^Утвердить$'),
-                    comfirm,
+                    Filters.regex('^Изменить$'),
+                    pm_time_change,
                 ),
             ],
             STUDENT_DIALOG: [
@@ -213,9 +322,15 @@ def main() -> None:
                     Filters.regex('^Сформировать$'),
                     create_teams,
                 ),
+            ],
+            DELETE: [
                 MessageHandler(
-                    Filters.regex('^Утвердить$'),
-                    comfirm,
+                    Filters.regex('^БЕЗУСЛОВНО!!!$'),
+                    delete_db,
+                ),
+                MessageHandler(
+                    Filters.regex('^Отмена! Отмена!$'),
+                    creator_dialog,
                 ),
             ],
         },
