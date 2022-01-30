@@ -15,6 +15,8 @@ from telegram import (
 from telegram.ext import (CallbackContext, CallbackQueryHandler, CommandHandler, ConversationHandler,
                           Filters, MessageHandler, Updater)
 
+from project_organizer.management.commands.helpers import create_teams_helper
+
 
 (
     NO_DB,
@@ -153,6 +155,7 @@ def create_teams(update, context):
     update.message.reply_text(
         'Идет формирование команд...',
     )
+    create_teams_helper()
     return teams_comfirm(update, context)
 
 
@@ -335,6 +338,7 @@ def main() -> None:
             ],
         },
         fallbacks=[MessageHandler(Filters.regex('^Выход$'), done)],
+        allow_reentry=True
     )
 
     dispatcher.add_handler(conv_handler)

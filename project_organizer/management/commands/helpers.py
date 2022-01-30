@@ -56,7 +56,7 @@ def create_students_lists():
     return sorted_novices, sorted_novices_plus, sorted_juniors
 
 
-def create_teams():
+def create_teams_helper():
     timeslots = create_timeslots_list()
     empty_timeslots = []
     novices, novices_plus, juniors = create_students_lists()
