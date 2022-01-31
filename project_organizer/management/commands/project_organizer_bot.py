@@ -132,10 +132,10 @@ def creator_dialog(update, context):
             ['Пускай за них решит судьба!'],
             ['Сжечь все'],
         ]
-    elif Student.objects.filter(desire_times=''):
+    if Student.objects.filter(tg_user__tg_id__isnull=False, desire_times=''):
         text = (
             '\n'.join('{} - {}'.format(student.name, student.tg_user.tg_name)
-                      for student in Student.objects.filter(desire_times=''))
+                      for student in Student.objects.filter(tg_user__tg_id__isnull=False, desire_times=''))
         )
         update.message.reply_text(
             'Эти студенты еще не указали свое время:\n' + text
