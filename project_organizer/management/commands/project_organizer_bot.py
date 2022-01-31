@@ -1,5 +1,6 @@
 import json
 import os
+import random
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -118,7 +119,7 @@ def creator_dialog(update, context):
     elif not Student.objects.filter(tg_user__tg_id__isnull=False):
         text = (
             '\n'.join(student.tg_user.tg_name
-                      for student in Student.objects.filter(desire_times=None))
+                      for student in Student.objects.filter(desire_times=''))
         )
         update.message.reply_text(
             'Отошлите ссылку на бота этим студентам:\n' + text
@@ -126,6 +127,7 @@ def creator_dialog(update, context):
         final_text = (
             'Как только кто-то отметит время, вы получите уведомление'
         )
+        keyboard.insert(0, ['Пускай за них решит судьба!'])
     else:
         text = (
             '\n'.join('{} - {}'.format(student.name, student.tg_user.tg_name)
@@ -138,6 +140,7 @@ def creator_dialog(update, context):
             'Нажмите Сформировать, чтобы посмотреть '
             'команды на текущий момент'
         )
+        keyboard.insert(0, ['Пускай за них решит судьба!'])
         keyboard.insert(0, ['Сформировать'])
     update.message.reply_text(
         final_text,
@@ -219,10 +222,11 @@ def teams_complete(update, context):
                 'Все это вам обязательно пригодится.\n'
                 'До встречи!'
             )
-            context.bot.send_message(
-                student.tg_user.tg_id, 
-                text=student_text,
-            )
+            if student.tg_user.tg_id:
+                context.bot.send_message(
+                    student.tg_user.tg_id, 
+                    text=student_text,
+                )
     update.message.reply_text(
         'Всем участникам разосланы уведомления '
         'о времени созвонов их групп.',
@@ -264,7 +268,7 @@ def pm_time_confirm(update, context):
     pm.from_time = time_interval[0]
     pm.until_time = time_interval[1]
     pm.save()
-    if Project_manager.objects.filter(from_time__isnull=False):
+    if not Project_manager.objects.filter(from_time__isnull=True):
         creator=Tg_user.objects.get(is_creator=True)
         context.bot.send_message(creator.tg_id, 
                                  text="Все ПМы указали свое время")
@@ -288,6 +292,17 @@ def get_unique_timeslots():
         if time not in times:
             times.append(time)
     return times
+
+
+def random_desire_times(update, context):
+    timeslots = get_unique_timeslots()
+    times_number = random.randint(1, len(timeslots))
+    random_desire_times = random.sample(timeslots, k=times_number)
+    for student in Student.objects.filter(desire_times=''):
+        student.desire_times = ','.join(random_desire_times)
+        student.save()
+    return creator_dialog(update, context)
+        
 
 
 def student_dialog(update, context):
@@ -315,7 +330,7 @@ def student_dialog(update, context):
             update.message.reply_text(
                 f'Вы выбрали:\n{text}',
             )
-    timeslots = sorted(list(set(timeslots) - set(desire_times)))
+    # timeslots = sorted(list(set(timeslots) - set(desire_times)))
     for timeslot in timeslots:
         keyboard.append([timeslot])
 
@@ -400,6 +415,10 @@ def main() -> None:
                 MessageHandler(
                     Filters.regex('^Утвердить$'),
                     teams_complete,
+                ),
+                MessageHandler(
+                    Filters.regex('^Пускай за них решит судьба!$'),
+                    random_desire_times,
                 ),
                 MessageHandler(
                     Filters.regex('^Сжечь все$'),
