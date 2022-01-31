@@ -7,11 +7,18 @@
     "is_far_east": "True"
   },
   {
-    "name": "Ирина",
+    "name": "Екатерина",
     "level": "pm",
-    "tg_username": "@Fortecru",
+    "tg_username": "@Eka_Kve",
     "discord_username": "example2#4323",
     "is_far_east": "False"
+  },
+  {
+    "name": "Семен",
+    "level": "novice+",
+    "tg_username": "@LuSP7",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
   },
   {
     "name": "Алексей",
@@ -89,5 +96,19 @@
     "tg_username": "@x",
     "discord_username": "example2#4322",
     "is_far_east": "True"
-  }
+  },
+  {
+    "name": "r",
+    "level": "novice",
+    "tg_username": "@r",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
+  {
+    "name": "s",
+    "level": "novice+",
+    "tg_username": "@s",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
 ]
