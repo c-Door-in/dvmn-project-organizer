@@ -105,9 +105,79 @@
     "is_far_east": "True"
   },
   {
-    "name": "s",
+    "name": "ba",
     "level": "novice+",
-    "tg_username": "@s",
+    "tg_username": "@ba",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
+  {
+    "name": "va",
+    "level": "junior",
+    "tg_username": "@va",
+    "discord_username": "example2#4322",
+    "is_far_east": "False"
+  },
+  {
+    "name": "ea",
+    "level": "novice",
+    "tg_username": "@ea",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
+  {
+    "name": "wa",
+    "level": "novice+",
+    "tg_username": "@wa",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
+  {
+    "name": "qa",
+    "level": "junior",
+    "tg_username": "@qa",
+    "discord_username": "example2#4322",
+    "is_far_east": "False"
+  },
+  {
+    "name": "aa",
+    "level": "novice",
+    "tg_username": "@aa",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
+  {
+    "name": "sa",
+    "level": "novice+",
+    "tg_username": "@sa",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
+  {
+    "name": "da",
+    "level": "junior",
+    "tg_username": "@da",
+    "discord_username": "example2#4322",
+    "is_far_east": "False"
+  },
+  {
+    "name": "za",
+    "level": "novice",
+    "tg_username": "@za",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
+  {
+    "name": "xa",
+    "level": "novice+",
+    "tg_username": "@xa",
+    "discord_username": "example2#4322",
+    "is_far_east": "True"
+  },
+  {
+    "name": "ra",
+    "level": "novice",
+    "tg_username": "@ra",
     "discord_username": "example2#4322",
     "is_far_east": "True"
   }

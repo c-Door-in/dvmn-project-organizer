@@ -104,7 +104,6 @@ def create_new_db(update, context):
 
 
 def creator_dialog(update, context):
-    keyboard=[['Сжечь все']]
     if Project_manager.objects.filter(from_time=None):
         text = (
             '\n'.join(pm.tg_user.tg_name for pm in Project_manager.objects.filter(from_time=None))
@@ -116,10 +115,11 @@ def creator_dialog(update, context):
             'Как только они отметят свое время, '
             'вы получите уведомление'
         )
+        keyboard=[['Сжечь все']]
     elif not Student.objects.filter(tg_user__tg_id__isnull=False):
         text = (
             '\n'.join(student.tg_user.tg_name
-                      for student in Student.objects.filter(desire_times=''))
+                      for student in Student.objects.filter(tg_user__tg_id__isnull=True))
         )
         update.message.reply_text(
             'Отошлите ссылку на бота этим студентам:\n' + text
@@ -127,8 +127,12 @@ def creator_dialog(update, context):
         final_text = (
             'Как только кто-то отметит время, вы получите уведомление'
         )
-        keyboard.insert(0, ['Пускай за них решит судьба!'])
-    else:
+        keyboard = [
+            ['Сформировать'],
+            ['Пускай за них решит судьба!'],
+            ['Сжечь все'],
+        ]
+    elif Student.objects.filter(desire_times=''):
         text = (
             '\n'.join('{} - {}'.format(student.name, student.tg_user.tg_name)
                       for student in Student.objects.filter(desire_times=''))
@@ -140,8 +144,14 @@ def creator_dialog(update, context):
             'Нажмите Сформировать, чтобы посмотреть '
             'команды на текущий момент'
         )
-        keyboard.insert(0, ['Пускай за них решит судьба!'])
-        keyboard.insert(0, ['Сформировать'])
+        keyboard = [
+            ['Сформировать'],
+            ['Пускай за них решит судьба!'],
+            ['Сжечь все'],
+        ]
+    else:
+        final_text= 'Все готово. Осталось только распределить.'
+        keyboard=[['Сформировать'], ['Сжечь все']]
     update.message.reply_text(
         final_text,
         reply_markup=ReplyKeyboardMarkup(
