@@ -118,7 +118,7 @@ def creator_dialog(update, context):
     elif not Student.objects.filter(tg_user__tg_id__isnull=False):
         text = (
             '\n'.join(student.tg_user.tg_name
-                      for student in Student.objects.filter(desire_times=None))
+                      for student in Student.objects.filter(desire_times=''))
         )
         update.message.reply_text(
             'Отошлите ссылку на бота этим студентам:\n' + text
