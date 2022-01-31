@@ -15,7 +15,7 @@ from telegram import (
 from telegram.ext import (CallbackContext, CallbackQueryHandler, CommandHandler, ConversationHandler,
                           Filters, MessageHandler, Updater)
 
-from project_organizer.management.commands.helpers import create_teams_helper
+from .utils import create_teams_helper, timeslots_helper
 
 
 (
@@ -103,6 +103,7 @@ def create_new_db(update, context):
 
 
 def creator_dialog(update, context):
+    keyboard=[['Сжечь все']]
     if Project_manager.objects.filter(from_time=None):
         text = (
             '\n'.join(pm.tg_user.tg_name for pm in Project_manager.objects.filter(from_time=None))
@@ -114,7 +115,6 @@ def creator_dialog(update, context):
             'Как только они отметят свое время, '
             'вы получите уведомление'
         )
-        keyboard=[['Сжечь все']]
     elif not Student.objects.filter(tg_user__tg_id__isnull=False):
         text = (
             '\n'.join(student.tg_user.tg_name
@@ -126,11 +126,10 @@ def creator_dialog(update, context):
         final_text = (
             'Как только кто-то отметит время, вы получите уведомление'
         )
-        keyboard=[['Сжечь все']]
     else:
         text = (
-            '\n'.join(student.tg_user.tg_name
-                      for student in Student.objects.filter(from_time=None))
+            '\n'.join('{} - {}'.format(student.name, student.tg_user.tg_name)
+                      for student in Student.objects.filter(desire_times=''))
         )
         update.message.reply_text(
             'Эти студенты еще не указали свое время:\n' + text
@@ -139,7 +138,7 @@ def creator_dialog(update, context):
             'Нажмите Сформировать, чтобы посмотреть '
             'команды на текущий момент'
         )
-        keyboard=[['Сформировать'], ['Сжечь все']]
+        keyboard.insert(0, ['Сформировать'])
     update.message.reply_text(
         final_text,
         reply_markup=ReplyKeyboardMarkup(
@@ -155,7 +154,7 @@ def create_teams(update, context):
     update.message.reply_text(
         'Идет формирование команд...',
     )
-    create_teams_helper()
+    create_teams_helper.create_teams()
     return teams_comfirm(update, context)
 
 
@@ -166,11 +165,16 @@ def teams_comfirm(update, context):
         if not pm_teams:
             text = f'{pm} пока без команд'
         else:
+            text = ''
             for team in pm_teams:
-                text = (
-                    'Команда №{team.team_id}\n'
-                    'Участники:\n'
-                    '\n'.join(team.students.all())
+                team_id = team.team_id
+                team_members = '\n'.join(student.name for student in team.students.all())
+                team_time = team.call_time.strftime('%H:%M')
+                text += (
+                    '\n\n'
+                    f'Команда №{team_id}\n'
+                    f'Созвон в {team_time}\n'
+                    f'Участники:\n{team_members}'
                 )
         update.message.reply_text(text)
     if not Team.objects.all():
@@ -178,7 +182,7 @@ def teams_comfirm(update, context):
     update.message.reply_text(
         'Подтвердите составы команд',
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[['Утвердить']],
+            keyboard=[['Сформировать'], ['Утвердить']],
             one_time_keyboard=True,
             resize_keyboard=True,
         ),
@@ -186,12 +190,54 @@ def teams_comfirm(update, context):
     return CREATOR
 
 
+def teams_complete(update, context):
+    for team in Team.objects.all():
+        pm = team.project_manager
+        pm_name = pm.name
+        team_id = team.team_id
+        team_members = '\n'.join('{} - {}'.format(student.name, student.tg_user.tg_name) for student in team.students.all())
+        team_time = team.call_time.strftime('%H:%M')
+        pm_text = (
+            f'Команда №{team_id}\n'
+            f'Созвон в {team_time}\n'
+            f'Участники:\n{team_members}'
+        )
+        context.bot.send_message(
+            pm.tg_user.tg_id, 
+            text=pm_text,
+        )
+        for student in team.students.all():
+            student_text = (
+                'Приветствую!\n'
+                f'Ваша команда созванивается в {team_time}\n'
+                f'Ваш ПМ - {pm_name}\n'
+                'Первый созвон во вторник.\n'
+                'А пока заполните анкету, '
+                'прочитайте инструкций на 50 страниц, '
+                'приведите в порядок все прошлые проекты '
+                'и перечитайте "Войну и мир".\n'
+                'Все это вам обязательно пригодится.\n'
+                'До встречи!'
+            )
+            context.bot.send_message(
+                student.tg_user.tg_id, 
+                text=student_text,
+            )
+    update.message.reply_text(
+        'Всем участникам разосланы уведомления '
+        'о времени созвонов их групп.',
+    )
+    return done(update, context)
+
+
 def pm_dialog(update, context):
     username = update.message.from_user.name
     user_id = update.message.from_user.id
-    pm = Project_manager.objects.get(tg_user__tg_name=username)
-    if not pm.tg_user.tg_id:
-        pm.update(tg_user__tg_id=user_id)
+    pm_tg_user = Tg_user.objects.get(tg_name=username)
+    if not pm_tg_user.tg_id:
+        pm_tg_user.tg_id = user_id
+        pm_tg_user.save()
+    pm = Project_manager.objects.get(tg_user=pm_tg_user)
     if not pm.from_time:
         update.message.reply_text(
             'Укажите временной промежуток для созвонов с командами '
@@ -234,9 +280,69 @@ def pm_time_change(update, context):
     return pm_dialog(update, context)
 
 
+def get_unique_timeslots():
+    timeslots = timeslots_helper.create_timeslots()
+    times = []
+    for timeslot in timeslots:
+        time = timeslot['start']
+        if time not in times:
+            times.append(time)
+    return times
+
+
 def student_dialog(update, context):
     username = update.message.from_user.name
     user_id = update.message.from_user.id
+    student_tg_user = Tg_user.objects.get(tg_name=username)
+    if not student_tg_user.tg_id:
+        student_tg_user.tg_id = user_id
+        student_tg_user.save()
+    student = Student.objects.get(tg_user=student_tg_user)
+
+    timeslots = get_unique_timeslots()
+    
+    keyboard = [['Подтвердить']]
+    desire_times = student.desire_times.split(',')
+    if update.message.text:
+        if update.message.text in desire_times:
+            desire_times.remove(update.message.text)
+        elif update.message.text in timeslots:
+            desire_times.append(update.message.text)
+        student.desire_times = ','.join(sorted(desire_times))
+        student.save()
+        if student.desire_times:
+            text = '\n'.join(desire_times)
+            update.message.reply_text(
+                f'Вы выбрали:\n{text}',
+            )
+    timeslots = sorted(list(set(timeslots) - set(desire_times)))
+    for timeslot in timeslots:
+        keyboard.append([timeslot])
+
+    update.message.reply_text(
+        'Выберете удобное время для созвона (можно несколько)',
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=keyboard,
+            one_time_keyboard=True,
+            resize_keyboard=True,
+        ),
+    )
+
+    return STUDENT_DIALOG
+
+
+def student_confirm(update, context):
+    username = update.message.from_user.name
+    student = Student.objects.get(tg_user__tg_name=username)
+    student_desire_times = '\n'.join(student.desire_times.split(','))
+    update.message.reply_text(
+            'Спасибо!\n'
+            'Вы выбрали:\n'
+            f'{student_desire_times}'
+            '\nПосле формирования команд '
+            'вам придет уведомление',
+        )
+    return done(update, context)
 
 
 def delete_confirm(update, context):
@@ -293,7 +399,7 @@ def main() -> None:
                 ),
                 MessageHandler(
                     Filters.regex('^Утвердить$'),
-                    teams_comfirm,
+                    teams_complete,
                 ),
                 MessageHandler(
                     Filters.regex('^Сжечь все$'),
@@ -322,8 +428,12 @@ def main() -> None:
             ],
             STUDENT_DIALOG: [
                 MessageHandler(
-                    Filters.regex('^Сформировать$'),
-                    create_teams,
+                    Filters.regex('^(([01][0-9])|(2[0-4]))\:((00)|(30))$'),
+                    student_dialog,
+                ),
+                MessageHandler(
+                    Filters.regex('^Подтвердить$'),
+                    student_confirm,
                 ),
             ],
             DELETE: [

@@ -58,16 +58,7 @@ class Student(models.Model):
     )
     name = models.CharField(max_length=25, blank=True)
     level = models.CharField(max_length=15)
-    from_time = models.TimeField(
-        'Available from a time',
-        blank=True,
-        null=True
-    )
-    until_time = models.TimeField(
-        'Available until a time',
-        blank=True,
-        null=True
-    )
+    desire_times = models.TextField(blank=True)
     team = models.ForeignKey(
         Team,
         on_delete=models.SET_NULL,

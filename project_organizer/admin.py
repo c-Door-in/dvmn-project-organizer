@@ -35,7 +35,6 @@ class StudentAdmin(admin.ModelAdmin):
         'tg_user',
         'name',
         'level',
-        'from_time',
-        'until_time',
+        'desire_times',
         'team',
     )
