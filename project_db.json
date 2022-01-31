@@ -89,12 +89,5 @@
     "tg_username": "@x",
     "discord_username": "example2#4322",
     "is_far_east": "True"
-  },
-  {
-    "name": "c",
-    "level": "junior",
-    "tg_username": "@c",
-    "discord_username": "example2#4322",
-    "is_far_east": "False"
   }
 ]
